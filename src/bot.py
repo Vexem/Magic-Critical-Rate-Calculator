@@ -1,7 +1,6 @@
 import os
 import discord
-from discord.ext import commands
-from discord import app_commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -43,7 +42,7 @@ def apply_buffs(base_rate, buffs):
 
 @bot.tree.command(name="help_magic_crit", description="Shows how to use the magic_crit command")
 async def help_magic_crit(interaction: discord.Interaction):
-    """Shows how to use the /help_magic_crit command"""
+    """Displays usage instructions for the /magic_crit command."""
     buffs_list = "**📌 Available buffs (use the numbers separated by space):**\n"
     for key, value in buffs_options.items():
         buffs_list += f"`{key}`. {value['name']} ({value['type']}{value['value']})\n"
@@ -58,11 +57,11 @@ async def help_magic_crit(interaction: discord.Interaction):
 
 @bot.tree.command(name="magic_crit", description="Calculates the Magic Critical Rate")
 async def magic_crit(interaction: discord.Interaction, wit: int, buff_numbers: str = ""):
-    """Calculates the Magic Critical Rate percentage based on the WIT and selected buffs."""
+    """Calculates the Magic Critical Rate percentage based on WIT and selected buffs."""
     try:
         base_rate = base_magic_crit(wit)
 
-        # Parsing the buff numbers (example: "3 9" for Dance of Siren + Dark Squad)
+        # Parsing the buff numbers (e.g., "3 9" for Dance of Siren + Dark Squad)
         buff_list = []
         if buff_numbers:
             selected_buffs = buff_numbers.split()
@@ -77,7 +76,7 @@ async def magic_crit(interaction: discord.Interaction, wit: int, buff_numbers: s
         rate = apply_buffs(base_rate, buff_list)
         final_rate = f"{rate:.2f}%" if rate <= 20 else f"20% ({rate:.2f}%)"
 
-        # Show the applied buffs
+        # Display the applied buffs
         applied_buffs = "\n\t".join(f"`{buffs_options[num]['name']}`" for num in buff_numbers.split()) if buff_numbers else "No buffs"
         response = (
             f"**🔮 WIT:** `{wit}`\n"
@@ -90,7 +89,7 @@ async def magic_crit(interaction: discord.Interaction, wit: int, buff_numbers: s
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
-    print(f'{bot.user} is online and slash commands are synchronized!')
+    print(f'{bot.user} has connected to Discord!')
 
-bot.run(os.getenv("DISCORD_BOT_TOKEN"))
+if __name__ == "__main__":
+    bot.run(os.getenv("DISCORD_BOT_TOKEN"))
