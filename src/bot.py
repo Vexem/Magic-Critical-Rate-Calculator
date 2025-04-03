@@ -11,7 +11,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# List of buffs with name, value, and type (only Dance of Siren and Dark Squad are multiplicative)
+# List of buffs with name, value, and type
 buffs_options = {
     "1": {"name": "Wild Magic 2", "value": 2, "type": "+"},
     "2": {"name": "Prophecy of Water / PoF / CoV", "value": 2, "type": "+"},
