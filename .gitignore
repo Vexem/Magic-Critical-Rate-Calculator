@@ -1,0 +1,20 @@
+# File di ambiente
+.env
+.env.local
+.env*.local
+
+# Cartelle di dipendenze
+node_modules/
+
+# File di log
+*.log
+logs/
+
+# File di sistema
+.DS_Store
+.idea/
+
+# File di build
+dist/
+build/
+*.exe
