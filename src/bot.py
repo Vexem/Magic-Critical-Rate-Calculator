@@ -1,17 +1,20 @@
 import os
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
+from aiohttp import web  # Import aiohttp for the web server
 
 load_dotenv()
 
+# Intents settings
 intents = discord.Intents.default()
 intents.message_content = True
 
+# Initialize the bot
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# List of buffs with name, value, and type
-buffs_options = {
+# Dictionary of available buffs
+BUFFS_OPTIONS = {
     "1": {"name": "Wild Magic 2", "value": 2, "type": "+"},
     "2": {"name": "Prophecy of Water / PoF / CoV", "value": 2, "type": "+"},
     "3": {"name": "Necklace of Valakas", "value": 2, "type": "+"},
@@ -24,72 +27,116 @@ buffs_options = {
     "10": {"name": "Magician's Will", "value": 1.05, "type": "x"}
 }
 
-def wit_bonus(wit):
-    return 0.005 + 1.05**(wit - 20)
+# Calculation functions
+def wit_bonus(wit: int) -> float:
+    """Calculate the bonus based on WIT."""
+    return 0.005 + 1.05 ** (wit - 20)
 
-def base_magic_crit(wit):
+def base_magic_crit(wit: int) -> float:
+    """Calculate the base Magic Critical Rate as a percentage."""
     return wit_bonus(wit) * 5
 
-def apply_buffs(base_rate, buffs):
+def apply_buffs(base_rate: float, buffs: list) -> float:
+    """
+    Apply buffs to the base rate.
+    
+    Buffs of type 'x' are multiplied,
+    while buffs of type '+' are added.
+    """
     multiplicative = 1
     additive = 0
     for buff in buffs:
-        if buff["type"] == "x":  
+        if buff["type"] == "x":
             multiplicative *= buff["value"]
         elif buff["type"] == "+":
             additive += buff["value"]
     return base_rate * multiplicative + additive
 
-@bot.tree.command(name="help_magic_crit", description="Shows how to use the magic_crit command")
+# Help command for magic_crit
+@bot.tree.command(name="help_magic_crit", description="Show how to use the magic_crit command")
 async def help_magic_crit(interaction: discord.Interaction):
-    """Displays usage instructions for the /magic_crit command."""
-    buffs_list = "**📌 Available buffs (use the numbers separated by space):**\n"
-    for key, value in buffs_options.items():
+    # Build the list of available buffs
+    buffs_list = "**📌 Available Buffs (use numbers separated by space):**\n"
+    for key, value in BUFFS_OPTIONS.items():
         buffs_list += f"`{key}`. {value['name']} ({value['type']}{value['value']})\n"
-    
+
     help_text = (
         "**🔮 Usage of the `/magic_crit` command**\n"
-        "📌 **Syntax:** `/magic_crit <WIT> <buff_numbers>`\n"
-        "📌 **Example:** `/magic_crit 23 3 9` (Dance of Siren + Dark Squad)\n\n"
+        "1. **Syntax:** `/magic_crit <WIT> <buff_numbers>`\n"
+        "2. **Example:** `/magic_crit 23 3 9` (uses Dance of Siren and Dark Squad)\n\n"
         f"{buffs_list}"
     )
     await interaction.response.send_message(help_text)
 
-@bot.tree.command(name="magic_crit", description="Calculates the Magic Critical Rate")
+# Command to calculate the Magic Critical Rate
+@bot.tree.command(name="magic_crit", description="Calculate the Magic Critical Rate")
 async def magic_crit(interaction: discord.Interaction, wit: int, buff_numbers: str = ""):
-    """Calculates the Magic Critical Rate percentage based on WIT and selected buffs."""
     try:
+        # Calculate the base rate
         base_rate = base_magic_crit(wit)
 
-        # Parsing the buff numbers (e.g., "3 9" for Dance of Siren + Dark Squad)
+        # Parse the provided buff numbers
         buff_list = []
         if buff_numbers:
             selected_buffs = buff_numbers.split()
             for buff_num in selected_buffs:
-                if buff_num in buffs_options:
-                    buff_list.append(buffs_options[buff_num])
+                if buff_num in BUFFS_OPTIONS:
+                    buff_list.append(BUFFS_OPTIONS[buff_num])
                 else:
-                    await interaction.response.send_message(f"⚠️ Buff number `{buff_num}` not recognized. Use `/help_magic_crit` to see the list.")
+                    await interaction.response.send_message(
+                        f"⚠️ Buff number `{buff_num}` not recognized. Use `/help_magic_crit` to see the list."
+                    )
                     return
 
-        # Apply the buffs
+        # Apply buffs to the base rate
         rate = apply_buffs(base_rate, buff_list)
-        final_rate = f"{rate:.2f}%" if rate <= 20 else f"20% ({rate:.2f}%)"
+        final_rate = f"{rate:.2f}%" if rate <= 20 else f"20% (calculated: {rate:.2f}%)"
 
-        # Display the applied buffs
-        applied_buffs = "\n\t".join(f"`{buffs_options[num]['name']}`" for num in buff_numbers.split()) if buff_numbers else "No buffs"
+        # Prepare the list of applied buffs in a readable format
+        applied_buffs = "\n\t".join(
+            f"`{BUFFS_OPTIONS[num]['name']}`" for num in buff_numbers.split()
+        ) if buff_numbers else "No buffs applied"
+
         response = (
             f"**🔮 WIT:** `{wit}`\n"
-            f"**✨ Applied buffs:** \n\t{applied_buffs}\n"
+            f"**✨ Applied Buffs:**\n\t{applied_buffs}\n"
             f"**📊 Magic Critical Rate:** `{final_rate}`"
         )
         await interaction.response.send_message(response)
     except Exception as e:
-        await interaction.response.send_message(f"❌ Error in calculation: {str(e)}")
+        await interaction.response.send_message(f"❌ Error calculating: {str(e)}")
 
+# Minimal web server to satisfy Render's port requirement
+async def handle(request):
+    return web.Response(text="Discord Bot Running!")
+
+async def start_webserver():
+    port = int(os.getenv("PORT", 5000))
+    app = web.Application()
+    app.router.add_get('/', handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    print(f"[WEB] Web server started on port {port}")
+    await site.start()
+
+# on_ready event: start both the bot and the web server
 @bot.event
 async def on_ready():
-    print(f'{bot.user} has connected to Discord!')
+    print(f"{bot.user} has connected to Discord!")
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced slash commands: {len(synced)}")
+    except Exception as e:
+        print(f"Error syncing commands: {e}")
+
+    # Start the web server in the background
+    bot.loop.create_task(start_webserver())
 
 if __name__ == "__main__":
-    bot.run(os.getenv("DISCORD_BOT_TOKEN"))
+    token = os.getenv("DISCORD_BOT_TOKEN")
+    if token:
+        print("Starting the bot...")
+        bot.run(token)
+    else:
+        print("❌ Error: DISCORD_BOT_TOKEN not found in environment variables.")
