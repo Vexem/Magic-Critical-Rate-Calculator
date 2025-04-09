@@ -3,6 +3,8 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 from aiohttp import web  # Import aiohttp for the web server
+import aiohttp
+import asyncio
 
 load_dotenv()
 
@@ -120,6 +122,8 @@ async def start_webserver():
     print(f"[WEB] Web server started on port {port}")
     await site.start()
 
+
+
 # on_ready event: start both the bot and the web server
 @bot.event
 async def on_ready():
@@ -140,3 +144,32 @@ if __name__ == "__main__":
         bot.run(token)
     else:
         print("❌ Error: DISCORD_BOT_TOKEN not found in environment variables.")
+
+async def auto_ping():
+    """Periodically sends requests to the bot's service URL to keep it awake."""
+    await bot.wait_until_ready()
+    url = "https://magic-critical-rate-calculator.onrender.com"  # Replace with your actual service URL
+    async with aiohttp.ClientSession() as session:
+        while not bot.is_closed():
+            try:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        print(f"Auto-ping successful: {response.status}")
+                    else:
+                        print(f"Auto-ping failed: {response.status}")
+            except Exception as e:
+                print(f"Error during auto-ping: {e}")
+            await asyncio.sleep(600)  # Waits 10 minutes before the next ping
+
+@bot.event
+async def on_ready():
+    print(f"{bot.user} has connected to Discord!")
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced slash commands: {len(synced)}")
+    except Exception as e:
+        print(f"Error syncing commands: {e}")
+    
+    # Start the auto-ping task
+    bot.loop.create_task(auto_ping())
+
