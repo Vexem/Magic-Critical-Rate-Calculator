@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Dictionary of available buffs
 BUFFS_OPTIONS = {
-    "1": {"name": "Wild Magic 2", "value": 2, "type": "+"},
+    "1": {"name": "Wild Magic lvl 2", "value": 2, "type": "+"},
     "2": {"name": "Prophecy of Water / PoF / CoV", "value": 2, "type": "+"},
     "3": {"name": "Necklace of Valakas", "value": 2, "type": "+"},
     "4": {"name": "Talisman: Wild Magic", "value": 2, "type": "+"},
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 async def auto_ping():
     """Periodically sends requests to the bot's service URL to keep it awake."""
     await bot.wait_until_ready()
-    url = "https://magic-critical-rate-calculator.onrender.com"  # Replace with your actual service URL
+    url = "https://magic-critical-rate-calculator.onrender.com"
     async with aiohttp.ClientSession() as session:
         while not bot.is_closed():
             try:
