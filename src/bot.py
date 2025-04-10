@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from aiohttp import web  # Import aiohttp for the web server
 import aiohttp
 import asyncio
+import logging
+
 
 load_dotenv()
 
@@ -122,8 +124,6 @@ async def start_webserver():
     print(f"[WEB] Web server started on port {port}")
     await site.start()
 
-
-
 # on_ready event: start both the bot and the web server
 @bot.event
 async def on_ready():
@@ -159,7 +159,7 @@ async def auto_ping():
                         print(f"Auto-ping failed: {response.status}")
             except Exception as e:
                 print(f"Error during auto-ping: {e}")
-            await asyncio.sleep(600)  # Waits 10 minutes before the next ping
+            await asyncio.sleep(300)  # Waits 10 minutes before the next ping
 
 @bot.event
 async def on_ready():
